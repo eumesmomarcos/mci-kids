@@ -1,55 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>MC-KIDS</title>
+  <meta charset="UTF-8" />
+  <title>MC-KIDS — Ofertas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f0f0;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #ffcc00;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 {
-      margin: 0;
-    }
-    main {
-      padding: 20px;
-    }
-    form {
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      max-width: 400px;
-      margin: auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 10px;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #ffcc00;
-      border: none;
-      cursor: pointer;
-      margin-top: 15px;
-    }
+    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; }
+    header { background: #ffcc00; padding: 16px; text-align: center; }
+    main { max-width: 640px; margin: 24px auto; padding: 0 16px; }
+    form { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    h1, h3 { margin: 0; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 6px; box-sizing: border-box; }
+    button { background: #ffcc00; border: none; cursor: pointer; font-weight: bold; }
+    .msg { margin-top: 12px; font-size: 14px; }
+    .msg.ok { color: #0a7d0a; }
+    .msg.err { color: #b00020; }
   </style>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
+  <!-- Firebase compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
 
   <script>
     // 🔑 Substitua pelos dados reais do seu projeto Firebase
@@ -73,50 +45,81 @@
   </header>
 
   <main>
-    <form id="formOferta">
-      <h3>Registrar Oferta</h3>
+    <form id="formOferta" autocomplete="on">
+      <h3>Registrar oferta</h3>
 
-      <label>Valor:</label>
-      <input type="number" id="valor" required>
+      <label for="valor">Valor</label>
+      <input type="number" id="valor" min="0" step="0.01" placeholder="Ex.: 50.00" required />
 
-      <label>Data:</label>
-      <input type="date" id="data" required>
+      <label for="data">Data</label>
+      <input type="date" id="data" required />
 
-      <label>Responsável:</label>
-      <input type="text" id="responsavel" required>
+      <label for="responsavel">Responsável</label>
+      <input type="text" id="responsavel" placeholder="Nome de quem registrou" required />
 
-      <label>Tipo:</label>
-      <select id="tipo">
+      <label for="tipo">Tipo</label>
+      <select id="tipo" required>
         <option value="entrada">Entrada</option>
         <option value="gasto">Gasto</option>
       </select>
 
-      <label>Descrição:</label>
-      <input type="text" id="descricao">
+      <label for="descricao">Descrição</label>
+      <input type="text" id="descricao" placeholder="Opcional" />
 
-      <button type="submit">Salvar Oferta</button>
+      <button type="submit">Salvar oferta</button>
+      <div id="mensagem" class="msg" aria-live="polite"></div>
     </form>
   </main>
 
   <script>
-    document.getElementById("formOferta").addEventListener("submit", async (e) => {
+    const form = document.getElementById("formOferta");
+    const msg = document.getElementById("mensagem");
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      msg.textContent = "";
+      msg.className = "msg";
+
+      const valor = parseFloat(document.getElementById("valor").value);
+      const data = document.getElementById("data").value;
+      const responsavel = document.getElementById("responsavel").value.trim();
+      const tipo = document.getElementById("tipo").value;
+      const descricao = document.getElementById("descricao").value.trim();
+
+      if (Number.isNaN(valor) || valor < 0) {
+        msg.textContent = "Valor inválido.";
+        msg.classList.add("err");
+        return;
+      }
+      if (!data) {
+        msg.textContent = "Informe a data.";
+        msg.classList.add("err");
+        return;
+      }
+      if (!responsavel) {
+        msg.textContent = "Informe o responsável.";
+        msg.classList.add("err");
+        return;
+      }
 
       const oferta = {
-        valor: parseFloat(document.getElementById("valor").value),
-        data: document.getElementById("data").value,
-        responsavel: document.getElementById("responsavel").value,
-        tipo: document.getElementById("tipo").value,
-        descricao: document.getElementById("descricao").value
+        valor,
+        data,
+        responsavel,
+        tipo,
+        descricao,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
       };
 
       try {
         await db.collection("Ofertas").add(oferta);
-        alert("✅ Oferta registrada com sucesso!");
-        document.getElementById("formOferta").reset();
+        msg.textContent = "✅ Oferta registrada com sucesso!";
+        msg.classList.add("ok");
+        form.reset();
       } catch (error) {
         console.error("Erro ao salvar:", error);
-        alert("❌ Erro ao registrar oferta.");
+        msg.textContent = "❌ Erro ao registrar oferta. Tente novamente.";
+        msg.classList.add("err");
       }
     });
   </script>
